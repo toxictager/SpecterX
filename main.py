@@ -14,7 +14,7 @@ def print_banner():
    ╚════██║██╔═══╝ ██╔══╝  ██║        ██║   ██╔══╝  ██╔═══╝    ██╔██╗
    ███████║██║     ███████╗╚██████╗   ██║   ███████╗██║       ██╔╝ ██╗ 
    ╚══════╝╚═╝     ╚══════╝ ╚═════╝   ╚═╝   ╚══════╝╚═╝       ╚═╝  ╚═╝
-            by Scarlet | Recon & OSINT Toolkit
+            by toxictager | Recon & OSINT Toolkit
     """)
 
 def main():
