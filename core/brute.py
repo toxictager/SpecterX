@@ -16,17 +16,46 @@ def run_ftp_bruteforce():
     clear()
     print("\n🔐 [FTP Brute-Force]")
 
-    target = input("Enter FTP IP or domain: ").strip()
-    port = input("Enter port (default 21): ").strip()
-    port = int(port) if port else 21
+    while True:
+        target = input("Enter FTP IP or domain: ").strip()
+        if not target:
+            print("[❌] Target cannot be empty.")
+        else:
+            break  # Add more sophisticated validation if needed (e.g., regex for IP/domain)
 
-    userlist_path = input("Path to username wordlist (e.g. wordlists/users.txt): ").strip()
-    passlist_path = input("Path to password wordlist (e.g. wordlists/passwords.txt): ").strip()
+    while True:
+        port_str = input("Enter port (default 21): ").strip()
+        if not port_str:
+            port = 21
+            break
+        try:
+            port = int(port_str)
+            if 1 <= port <= 65535:
+                break
+            else:
+                print("[❌] Port must be between 1 and 65535.")
+        except ValueError:
+            print("[❌] Invalid port number.")
 
-    if not os.path.exists(userlist_path) or not os.path.exists(passlist_path):
-        print("[❌] Wordlist file(s) not found.")
-        input("Press Enter to return...")
-        return
+    while True:
+        userlist_path = input("Path to username wordlist (e.g. wordlists/users.txt): ").strip()
+        if not userlist_path:
+            print("[❌] Username wordlist path cannot be empty.")
+        elif not os.path.exists(userlist_path):
+            print(f"[❌] Username wordlist file not found: {userlist_path}")
+        else:
+            break
+
+    while True:
+        passlist_path = input("Path to password wordlist (e.g. wordlists/passwords.txt): ").strip()
+        if not passlist_path:
+            print("[❌] Password wordlist path cannot be empty.")
+        elif not os.path.exists(passlist_path):
+            print(f"[❌] Password wordlist file not found: {passlist_path}")
+        else:
+            break
+
+    # The os.path.exists checks are handled in the input loops above.
 
     try:
         with open(userlist_path, 'r', encoding='utf-8', errors='ignore') as ufile:
@@ -96,17 +125,44 @@ def run_ssh_bruteforce():
     clear()
     print("\n🔐 [SSH Brute-Force] (Single Username Mode)")
 
-    target = input("Enter SSH IP or domain: ").strip()
-    port = input("Enter port (default 22): ").strip()
-    port = int(port) if port else 22
+    while True:
+        target = input("Enter SSH IP or domain: ").strip()
+        if not target:
+            print("[❌] Target cannot be empty.")
+        else:
+            break # Add more sophisticated validation if needed
 
-    username = input("Enter known username: ").strip()
-    passlist_path = input("Path to password wordlist: ").strip()
+    while True:
+        port_str = input("Enter port (default 22): ").strip()
+        if not port_str:
+            port = 22
+            break
+        try:
+            port = int(port_str)
+            if 1 <= port <= 65535:
+                break
+            else:
+                print("[❌] Port must be between 1 and 65535.")
+        except ValueError:
+            print("[❌] Invalid port number.")
 
-    if not os.path.exists(passlist_path):
-        print("[❌] Password wordlist not found.")
-        input("Press Enter to return...")
-        return
+    while True:
+        username = input("Enter known username: ").strip()
+        if not username:
+            print("[❌] Username cannot be empty.")
+        else:
+            break
+
+    while True:
+        passlist_path = input("Path to password wordlist: ").strip()
+        if not passlist_path:
+            print("[❌] Password wordlist path cannot be empty.")
+        elif not os.path.exists(passlist_path):
+            print(f"[❌] Password wordlist file not found: {passlist_path}")
+        else:
+            break
+
+    # The os.path.exists check is handled in the input loop above.
 
     try:
         with open(passlist_path, "r", encoding="utf-8", errors="ignore") as f:
@@ -184,14 +240,35 @@ def run_http_bruteforce():
     clear()
     print("\n🔐 [HTTP Basic Auth Brute-Force]")
 
-    target_url = input("Enter Target URL (e.g., http://example.com/protected): ").strip()
-    userlist_path = input("Path to username wordlist (e.g. wordlists/users.txt): ").strip()
-    passlist_path = input("Path to password wordlist (e.g. wordlists/passwords.txt): ").strip()
+    while True:
+        target_url = input("Enter Target URL (e.g., http://example.com/protected): ").strip()
+        if not target_url:
+            print("[❌] Target URL cannot be empty.")
+        # Basic check for http/https prefix, can be more sophisticated
+        elif not (target_url.startswith("http://") or target_url.startswith("https://")):
+            print("[❌] Invalid URL format. Please include http:// or https://")
+        else:
+            break
 
-    if not os.path.exists(userlist_path) or not os.path.exists(passlist_path):
-        print("[❌] Wordlist file(s) not found.")
-        input("Press Enter to return...")
-        return
+    while True:
+        userlist_path = input("Path to username wordlist (e.g. wordlists/users.txt): ").strip()
+        if not userlist_path:
+            print("[❌] Username wordlist path cannot be empty.")
+        elif not os.path.exists(userlist_path):
+            print(f"[❌] Username wordlist file not found: {userlist_path}")
+        else:
+            break
+
+    while True:
+        passlist_path = input("Path to password wordlist (e.g. wordlists/passwords.txt): ").strip()
+        if not passlist_path:
+            print("[❌] Password wordlist path cannot be empty.")
+        elif not os.path.exists(passlist_path):
+            print(f"[❌] Password wordlist file not found: {passlist_path}")
+        else:
+            break
+
+    # The os.path.exists checks are handled in the input loops above.
 
     try:
         with open(userlist_path, 'r', encoding='utf-8', errors='ignore') as ufile:
