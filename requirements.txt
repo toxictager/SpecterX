@@ -16,3 +16,6 @@ paramiko>=2.9.0
 
 # Network interface detection and system network info
 netifaces>=0.11.0
+
+# HTTP library for making requests (used in HTTP bruteforcer)
+requests>=2.20.0
