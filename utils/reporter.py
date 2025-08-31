@@ -42,41 +42,40 @@ def init_html_report():
   <h1>SpecterX Recon Report <span class="live-dot"></span></h1>
 
   <div class="filters">
-    <button onclick="showAll()" class="active">Show All</button>
-    <button onclick="filter('Subdomain Scanner')">Subdomain Scanner</button>
-    <button onclick="filter('Port Scanner')">Port Scanner</button>
-    <button onclick="filter('LAN IP Scanner')">LAN IP Scanner</button>
-    <button onclick="filter('Web Fingerprinter')">Web Fingerprinter</button>
-    <button onclick="filter('Username OSINT')">Username OSINT</button>
-    <button onclick="filter('Email OSINT')">Email OSINT</button>
-    <button onclick="filter('Exploit Matcher')">Exploit Matcher</button>
-    <button onclick="filter('Brute-Force Results')">Brute-Force</button>
+    <button onclick="showAll(event)" class="active">Show All</button>
+    <button onclick="filter(event, 'Subdomain Scanner')">Subdomain Scanner</button>
+    <button onclick="filter(event, 'Port Scanner')">Port Scanner</button>
+    <button onclick="filter(event, 'LAN IP Scanner')">LAN IP Scanner</button>
+    <button onclick="filter(event, 'Web Fingerprinter')">Web Fingerprinter</button>
+    <button onclick="filter(event, 'Username OSINT')">Username OSINT</button>
+    <button onclick="filter(event, 'Email OSINT')">Email OSINT</button>
+    <button onclick="filter(event, 'Exploit Matcher')">Exploit Matcher</button>
+    <button onclick="filter(event, 'Brute-Force Results')">Brute-Force</button>
   </div>
 
   <script>
-    function filter(module) {
+    function filter(event, module) {
       document.querySelectorAll('.block').forEach(b => {
-        if (b.dataset.module === module) {
-          b.classList.remove('hidden');
-        } else {
-          b.classList.add('hidden');
-        }
+        const blockModule = b.getAttribute('data-module');
+        b.style.display = blockModule === module ? 'block' : 'none';
       });
       document.querySelectorAll('.filters button').forEach(btn => btn.classList.remove('active'));
-      event.target.classList.add('active');
+      event.currentTarget.classList.add('active');
     }
 
-    function showAll() {
-      document.querySelectorAll('.block').forEach(b => b.classList.remove('hidden'));
+    function showAll(event) {
+      document.querySelectorAll('.block').forEach(b => {
+        b.style.display = 'block';
+      });
       document.querySelectorAll('.filters button').forEach(btn => btn.classList.remove('active'));
-      event.target.classList.add('active');
+      event.currentTarget.classList.add('active');
     }
 
     // 🔄 Smart Auto-Reload based on timestamp
     let lastUpdate = null;
     async function checkUpdate() {
       try {
-        const res = await fetch("report.html", { cache: "no-store" });
+        const res = await fetch("/output/report.html", { cache: "no-store" });
         const text = await res.text();
         const match = text.match(/<div class="timestamp">(.+?)<\\/div>/g);
         if (match) {
@@ -90,7 +89,7 @@ def init_html_report():
         console.warn("Live update check failed:", err);
       }
     }
-    setInterval(checkUpdate, 1000); // check every 5 seconds
+    setInterval(checkUpdate, 3000); // check every 3 seconds
   </script>
 """)
 
