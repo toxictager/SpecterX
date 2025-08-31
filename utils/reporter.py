@@ -98,10 +98,9 @@ def init_html_report():
 def write_html_section(module_name, content_lines):
     init_html_report()
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    normalized_name = module_name.title()
     block = f"""
-<div class="block" data-module="{normalized_name}">
-  <h2 class="section-title">{normalized_name}</h2>
+<div class="block" data-module="{module_name}">
+  <h2 class="section-title">{module_name}</h2>
   <div class="timestamp">{timestamp}</div>
   <pre>{chr(10).join(content_lines)}</pre>
 </div>
