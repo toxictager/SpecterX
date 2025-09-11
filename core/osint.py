@@ -3,6 +3,7 @@
 import requests
 from datetime import datetime
 from utils.reporter import write_html_section
+from utils.progress import with_progress
 
 
 platforms = {
@@ -28,7 +29,7 @@ def check_username(username):
     headers = {"User-Agent": "Mozilla/5.0"}
     results = []
 
-    for site, url in platforms.items():
+    for site, url in with_progress(platforms.items(), desc="Checking Usernames"):
         full_url = url.format(username)
         try:
             resp = requests.get(full_url, headers=headers, timeout=6)
