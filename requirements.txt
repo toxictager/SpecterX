@@ -19,3 +19,6 @@ netifaces>=0.11.0
 
 # HTTP library for making requests (used in HTTP bruteforcer)
 requests>=2.20.0
+
+# HTML parsing library for web scraping and analysis
+beautifulsoup4>=4.9.3

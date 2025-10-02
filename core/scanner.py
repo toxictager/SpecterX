@@ -27,8 +27,10 @@ def run_subdomain_scan():
 
     try:
         with open(wordlist_path, "r") as f:
-            for word in f:
-                sub = word.strip()
+            num_lines = sum(1 for line in f)
+            f.seek(0)
+            for sub in with_progress(f, desc="Scanning Subdomains", total=num_lines):
+                sub = sub.strip()
                 full_domain = f"{sub}.{domain}"
                 try:
                     answers = resolver.resolve(full_domain, "A")
@@ -119,7 +121,8 @@ def run_port_scan():
         t = threading.Thread(target=threader, daemon=True)
         t.start()
 
-    for port in range(start_port, end_port + 1):
+    port_range_to_scan = range(start_port, end_port + 1)
+    for port in with_progress(port_range_to_scan, desc="Scanning Ports"):
         q.put(port)
 
     q.join()  # Wait for all threads to finish
@@ -234,10 +237,11 @@ def run_lan_ip_scan():
     
     print("\n[⚡] Pinging subnet... (this may take a few seconds)")
     # Ping sweep to populate ARP cache (some OSes need this)
-    for ip in subnet.hosts():
+    hosts = list(subnet.hosts())
+    for ip in with_progress(hosts, desc="Pinging Subnet"):
         ip_str = str(ip)
         if platform.system().lower() == "windows":
-            subprocess.run(["ping", "-n", "1", "-w", "300", ip_str], stdout=subprocess.DEVNULL)
+            subprocess.run(["ping", "-n", "1", "-w", "300", ip_str], stdout=subprocess.DEVNULL, creationflags=subprocess.CREATE_NO_WINDOW)
         else:
             subprocess.run(["ping", "-c", "1", "-W", "1", ip_str], stdout=subprocess.DEVNULL)
     
